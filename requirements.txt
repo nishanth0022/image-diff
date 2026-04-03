@@ -7,4 +7,5 @@ Pillow
 numpy
 python-multipart
 pyzbar
-jinja2
+jinja2streamlit
+requests

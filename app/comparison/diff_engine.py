@@ -1,7 +1,7 @@
 from app.models.schemas import Difference
 from app.utils.text_utils import is_ocr_artifact, normalize_text
 
-def is_micro_shift(boxA, boxB, tolerance=5):
+def is_micro_shift(boxA, boxB, tolerance=2):
     # Returns True if the boxes are very close in position and size
     if boxA is None or boxB is None:
         return False
@@ -22,17 +22,17 @@ def detect_differences(matches, unmatched_base, unmatched_rev):
                 # However, the bounding box might still have shifted
                 if b.bbox != r.bbox and not is_micro_shift(b.bbox, r.bbox):
                     clean_val = normalize_text(str(b.value))
-                    diffs.append(Difference(b.element_type, "shift", clean_val, clean_val, b.bbox))
+                    diffs.append(Difference(b.element_type, "shift", clean_val, clean_val, b.bbox, r.bbox))
                 continue
                 
             # Genuine modification
-            diffs.append(Difference(b.element_type, "modified", b.value, r.value, b.bbox))
+            diffs.append(Difference(b.element_type, "modified", b.value, r.value, b.bbox, r.bbox))
         elif b.bbox != r.bbox:
             # Text is strictly identical but position changed
             if is_micro_shift(b.bbox, r.bbox):
                 continue
             else:
-                diffs.append(Difference(b.element_type, "shift", b.value, r.value, b.bbox))
+                diffs.append(Difference(b.element_type, "shift", b.value, r.value, b.bbox, r.bbox))
 
     # removed / missing row
     for b in unmatched_base:

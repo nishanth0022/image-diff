@@ -2,7 +2,10 @@ import cv2
 from app.models.schemas import Element
 
 def detect_graphics(img):
-    contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Invert and apply robust internal thresholding so OpenCV can detect graphical shapes on grayscale
+    inverted = cv2.bitwise_not(img)
+    _, binary = cv2.threshold(inverted, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     elements = []
 

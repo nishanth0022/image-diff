@@ -24,12 +24,8 @@ def preprocess(img):
     # Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
-    # Deskew (invert to find text pixels first)
-    inverted = cv2.bitwise_not(gray)
-    deskewed_inverted = deskew(inverted)
-    gray_deskewed = cv2.bitwise_not(deskewed_inverted)
-    
-    # Return the clean deskewed grayscale directly! 
-    # Do NOT apply median blurring or Otsu thresholding here as it destroys crisp digital fonts.
+    # Return the clean grayscale directly! 
+    # Do NOT apply median blurring, Otsu thresholding, or Deskewing here.
+    # Deskewing sparse digital PDFs via minAreaRect causes catastrophic 20+ degree rotations.
     # Tesseract's internal Leptonica engine handles thresholding optimally.
-    return gray_deskewed
+    return gray

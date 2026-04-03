@@ -18,7 +18,7 @@ def normalize_for_ocr(text: str) -> str:
     text = re.sub(r'rn', 'm', text)
     return text
 
-def is_ocr_artifact(base: str, rev: str, threshold: float = 0.85) -> bool:
+def is_ocr_artifact(base: str, rev: str, threshold: float = 0.95) -> bool:
     norm_b = normalize_text(base)
     norm_r = normalize_text(rev)
     

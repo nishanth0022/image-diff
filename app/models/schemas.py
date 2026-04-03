@@ -38,12 +38,14 @@ class Difference:
         base_value: Any,
         revised_value: Any,
         bbox: Any,
+        revised_bbox: Any = None,
     ) -> None:
         self.element_type = element_type    # "text" | "graphic" …
         self.change_type = change_type      # "modified" | "shift" | "removed" | "added"
         self.base_value = base_value
         self.revised_value = revised_value
         self.bbox = bbox
+        self.revised_bbox = revised_bbox
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +59,7 @@ class DiffItem(BaseModel):
     base: Optional[str] = None
     revised: Optional[str] = None
     bbox: Optional[Any] = None
+    revised_bbox: Optional[Any] = None
 
 
 class ComparisonResult(BaseModel):

@@ -11,6 +11,7 @@ GET /
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import shutil
@@ -85,6 +86,48 @@ def health():
     return {"status": "running"}
 
 
+async def _process_single_revision(base_path: str, rev: UploadFile) -> ComparisonResult:
+    """Handles an individual revised file in a background synchronous thread lock."""
+    rev_name = rev.filename or "rev_doc"
+    rev_filename = f"{uuid.uuid4()}_{rev_name}"
+    rev_path = os.path.join(UPLOAD_DIR, rev_filename)
+
+    # 1. Non-blocking Async I/O Stream
+    rev_content = await rev.read()
+    
+    # Write to disk in a separate thread so node main loop isn't blocked
+    def _save_rev():
+        with open(rev_path, "wb") as f:
+            f.write(rev_content)
+    
+    await asyncio.to_thread(_save_rev)
+    logger.debug("Saved revised → %s", rev_path)
+
+    try:
+        # 2. Offload heavy Python CPU/blocking operations
+        diffs = await asyncio.to_thread(_run_pipeline, base_path, rev_path)
+        diff_list = await asyncio.to_thread(generate_json, diffs)
+
+        html_path = os.path.join(OUTPUT_DIR, f"{rev_filename}.html")
+        await asyncio.to_thread(generate_html, diffs, html_path)
+        
+        logger.info("✔ '%s' — %d diff(s) → report: %s", rev_name, len(diffs), html_path)
+
+        return ComparisonResult(
+            revised_file=rev_name,
+            status="ok",
+            differences=[DiffItem(**d) for d in diff_list],
+            html_report=html_path,
+        )
+
+    except Exception as exc:
+        logger.exception("✘ Pipeline failed for '%s': %s", rev_name, exc)
+        return ComparisonResult(
+            revised_file=rev_name,
+            status="error",
+            error=str(exc),
+        )
+
 @router.post(
     "/compare/",
     # ── Swagger UI fix ────────────────────────────────────────────────────
@@ -126,55 +169,30 @@ def health():
     tags=["comparison"],
     summary="Compare base document against one or more revised documents",
 )
-def compare(
+async def compare(
     base: UploadFile = File(..., description="Base document (PNG / JPEG / PDF)"),
     revised: List[UploadFile] = File(..., description="One or more revised documents"),
 ) -> CompareResponse:
     logger.info("═══ /compare/ ─ base='%s'  revised_count=%d ═══", base.filename, len(revised))
 
-    # ── Save base file ────────────────────────────────────────────────────
+    # ── Non-blocking Async I/O for Base File ────────────────────────────────
     base_filename = f"{uuid.uuid4()}_{base.filename or 'base_doc'}"
     base_path = os.path.join(UPLOAD_DIR, base_filename)
-    with open(base_path, "wb") as fh:
-        shutil.copyfileobj(base.file, fh)
+    
+    base_content = await base.read()
+    
+    def _save_base():
+        with open(base_path, "wb") as f:
+            f.write(base_content)
+    
+    await asyncio.to_thread(_save_base)
     logger.debug("Saved base → %s", base_path)
 
-    results: list[ComparisonResult] = []
-
-    for rev in revised:
-        rev_name = rev.filename or "rev_doc"
-        rev_filename = f"{uuid.uuid4()}_{rev_name}"
-        rev_path = os.path.join(UPLOAD_DIR, rev_filename)
-        with open(rev_path, "wb") as fh:
-            shutil.copyfileobj(rev.file, fh)
-        logger.debug("Saved revised → %s", rev_path)
-
-        try:
-            diffs = _run_pipeline(base_path, rev_path)
-            diff_list = generate_json(diffs)
-
-            html_path = os.path.join(OUTPUT_DIR, f"{rev_filename}.html")
-            generate_html(diffs, html_path)
-            logger.info("✔ '%s' — %d diff(s) → report: %s", rev_name, len(diffs), html_path)
-
-            results.append(
-                ComparisonResult(
-                    revised_file=rev_name,
-                    status="ok",
-                    differences=[DiffItem(**d) for d in diff_list],
-                    html_report=html_path,
-                )
-            )
-
-        except Exception as exc:
-            logger.exception("✘ Pipeline failed for '%s': %s", rev_name, exc)
-            results.append(
-                ComparisonResult(
-                    revised_file=rev_name,
-                    status="error",
-                    error=str(exc),
-                )
-            )
+    # ── Launch Threadpool Processing Concurrently ───────────────────────
+    tasks = [_process_single_revision(base_path, rev) for rev in revised]
+    
+    # Executes all processed revisions synchronously together! Wait for them to finish.
+    results = await asyncio.gather(*tasks)
 
     logger.info("═══ /compare/ complete — %d result(s) ═══", len(results))
     return CompareResponse(

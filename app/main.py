@@ -50,7 +50,7 @@ app = FastAPI(
     title="Image Comparison API",
     description=(
         "Upload a **base** document and one or more **revised** documents "
-        "(PNG / JPEG / PDF) and receive a full structured diff report immediately."
+        "(PNG / JPEG / PDF) and receive a full structured diff report immediately. "
     ),
     version="1.0.0",
     openapi_version="3.0.2",

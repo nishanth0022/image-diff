@@ -3,13 +3,8 @@
 This repository houses a sophisticated multi-component API pipeline that analyzes structural and textual differences between a base document and one or more revised iterations. It leverages classical computer vision and greedy text-matching similarity metrics to filter out chaotic OCR and layout noise, reporting only pure business value changes.
 
 ---
-
-## 🗂️ Architectural Deliverables
-Please review the generated Markdown files inside this repository outlining our methodology and technical constraints:
-* **[architecture.md](./architecture.md)** — Pipeline Data Flow and Extensibility Graph.
-* **[technical_design.md](./technical_design.md)** — Module component breakdown and Technology choices.
-* **[approach_report.md](./approach_report.md)** — Strategic 3-page overview evaluating algorithm limitations and our mathematical approach to mitigating noise.
-
+### System Architecture
+![alt text](Image_Difference_2.drawio.png)
 ---
 
 ## 🚀 Setup & Installation
@@ -57,7 +52,7 @@ Once running, navigate your browser to the interactive GUI hosted at:
 
 The pipeline automatically manages:
 1. **Intelligent Ingestion**: `PNG`, `JPEG`, and flattened `PDF` forms.
-2. **Preprocessing Cleanup**: Deskewing angulation rotation, Median Blurring for salt/pepper speckles, and Adaptive Otsu binarization.
+2. **Preprocessing Cleanup**: Non-destructive Deskewing angulation rotation. Assures flawless alignment prior to Tesseract ingestion while actively guarding against pixel-degradation (allowing Tesseract's native sub-pixel Leptonica rendering to thrive).
 3. **Triple-Layer Target Identification**: 
     - Text (Line Grouped logically)
     - Non-text Graphics (OpenCV boundaries) 
@@ -67,3 +62,21 @@ The pipeline automatically manages:
 **Output Paths**:
 - Immediate API `JSON` payload response.
 - A full persistent HTML Document mapping written silently back to `output/` directory!
+
+---
+
+## 🖥️ Streamlit Visual Dashboard
+
+This repository now includes an interactive **Streamlit Visual Dashboard** that physically draws difference boxes mapped to their precise geometries on dual side-by-side images! 
+It operates as a frontend client, meaning it pipes directly into your raw FastAPI backend.
+
+1. Ensure your core backend is securely running in your primary terminal:
+   ```bash
+   uvicorn app.main:app --reload --port 8001
+   ```
+2. Open a **second terminal window**, ensure your virtual environment is activated (`venv311\Scripts\activate`).
+3. Boot the visual dashboard:
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+4. A browser window will automatically launch! Simply drag and drop your Base + Revised images into the sidebar and watch the interactive diff mappings appear!

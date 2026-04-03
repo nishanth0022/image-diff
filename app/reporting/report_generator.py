@@ -8,7 +8,8 @@ def generate_json(diffs):
             "change": d.change_type,
             "base": d.base_value,
             "revised": d.revised_value,
-            "bbox": d.bbox
+            "bbox": d.bbox,
+            "revised_bbox": getattr(d, "revised_bbox", None)
         }
         for d in diffs
     ]
